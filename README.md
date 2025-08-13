@@ -86,4 +86,5 @@ dotnet test
 ## 🌐 Acesso
 
 Após o deploy, a aplicação estará disponível em:
-`https://seu-projeto.railway.app`
+
+https://fuel-track-dotnet.fly.dev/
