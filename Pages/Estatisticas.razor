@@ -1,0 +1,618 @@
+@page "/estatisticas"
+@using MeuProjetoBlazorServer.Data
+@using MeuProjetoBlazorServer.Services
+@using System.Net.Http.Json
+@using System.Linq
+@inject IFuelRecordService FuelRecordService
+@inject IVehicleService VehicleService
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Estatísticas por Veículos</PageTitle>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-chart-line me-2"></i>
+                        Estatísticas de Consumo por Veículos
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <button class="btn btn-success" @onclick="CarregarEstatisticas" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>Carregando...</span>
+                                }
+                                else
+                                {
+                                    <i class="fas fa-sync-alt me-2"></i>
+                                    <span>Atualizar Estatísticas</span>
+                                }
+                            </button>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Ordenado por eficiência (km/L) - Mais eficiente primeiro
+                            </small>
+                        </div>
+                    </div>
+
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                            <p class="mt-2">Carregando estatísticas...</p>
+                        </div>
+                    }
+                    else if (vehicleStatistics.Count == 0)
+                    {
+                        <div class="alert alert-info text-center">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Nenhuma estatística disponível. Verifique se existem veículos e abastecimentos cadastrados.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="row">
+                            @foreach (var stats in vehicleStatistics)
+                            {
+                                <div class="col-lg-6 col-xl-4 mb-4">
+                                    <div class="card h-100 border-0 shadow-sm">
+                                        <div class="card-header bg-primary text-white">
+                                            <h5 class="mb-0">
+                                                <i class="fas fa-car me-2"></i>
+                                                @stats.VehicleName (@stats.VehicleYear)
+                                            </h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row mb-3">
+                                                <div class="col-12">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span class="fw-bold text-primary">Consumo Médio:</span>
+                                                        <span class="badge bg-success fs-6">
+                                                            @stats.AverageConsumption.ToString("F2") km/L
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="row mb-3">
+                                                <div class="col-12">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span class="fw-bold">Distância Total:</span>
+                                                        <span class="text-info">
+                                                            @stats.TotalDistance.ToString("F1") km
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="row mb-3">
+                                                <div class="col-12">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span class="fw-bold">Combustível Total:</span>
+                                                        <span class="text-warning">
+                                                            @stats.TotalFuelConsumed.ToString("F1") L
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="row mb-3">
+                                                <div class="col-12">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span class="fw-bold">Custo Total:</span>
+                                                        <span class="text-danger">
+                                                            R$ @stats.TotalCost.ToString("F2")
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="row mb-3">
+                                                <div class="col-12">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span class="fw-bold">Preço Médio/L:</span>
+                                                        <span class="text-secondary">
+                                                            R$ @stats.AverageFuelPrice.ToString("F2")
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="row mb-3">
+                                                <div class="col-12">
+                                                    <div class="d-flex justify-content-between align-items-center">
+                                                        <span class="fw-bold">Total de Abastecimentos:</span>
+                                                        <span class="badge bg-info">
+                                                            @stats.TotalFuelRecords
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div> <!-- fecha card-body -->
+                                    </div> <!-- fecha card -->
+                                </div> <!-- fecha coluna -->
+                            }
+                        </div> <!-- fecha row -->
+                    }
+                </div> <!-- fecha card-body -->
+            </div> <!-- fecha card -->
+        </div> <!-- fecha col -->
+    </div> <!-- fecha row -->
+</div> <!-- fecha container -->
+
+@if (vehicleStatistics.Count > 0)
+{
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-chart-pie me-2"></i>
+                            Resumo Geral
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3 mb-3">
+                                <div class="text-center">
+                                    <div class="display-6 text-primary">@vehicleStatistics.Count</div>
+                                    <div class="text-muted">Veículos</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="text-center">
+                                    <div class="display-6 text-success">
+                                        @vehicleStatistics.Average(s => s.AverageConsumption).ToString("F2")
+                                    </div>
+                                    <div class="text-muted">Consumo Médio (km/L)</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="text-center">
+                                    <div class="display-6 text-info">
+                                        @vehicleStatistics.Sum(s => s.TotalDistance).ToString("F0")
+                                    </div>
+                                    <div class="text-muted">Total de km</div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                <div class="text-center">
+                                    <div class="display-6 text-warning">
+                                        R$ @vehicleStatistics.Sum(s => s.TotalCost).ToString("F0")
+                                    </div>
+                                    <div class="text-muted">Custo Total</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div> <!-- fecha card-body -->
+                </div> <!-- fecha card -->
+            </div> <!-- fecha col -->
+        </div> <!-- fecha row -->
+    </div> <!-- fecha container -->
+}
+
+<!-- Listagem de Abastecimentos por Mês -->
+@if (fuelRecordsByMonth.Count > 0)
+{
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-info text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-calendar-month me-2"></i>
+                            Abastecimentos por Mês
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Mês/Ano</th>
+                                        <th>Veículo</th>
+                                        <th>Total de Abastecimentos</th>
+                                        <th>Combustível Total (L)</th>
+                                        <th>Custo Total (R$)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var monthStats in fuelRecordsByMonth.OrderByDescending(m => m.Year).ThenByDescending(m => m.Month))
+                                    {
+                                        <tr class="table-primary">
+                                            <td colspan="5" class="fw-bold">
+                                                <i class="fas fa-calendar me-2"></i>
+                                                @GetMonthName(monthStats.Month) @monthStats.Year
+                                            </td>
+                                        </tr>
+                                        @foreach (var vehicleStats in monthStats.VehicleStats.OrderBy(v => v.VehicleName))
+                                        {
+                                            <tr>
+                                                <td></td>
+                                                <td>
+                                                    <i class="fas fa-car me-2"></i>
+                                                    @vehicleStats.VehicleName
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-info">@vehicleStats.TotalRecords</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="text-warning fw-bold">@vehicleStats.TotalFuel.ToString("F1")</span>
+                                                </td>
+                                                <td class="text-center">
+                                                    <span class="text-danger fw-bold">R$ @vehicleStats.TotalCost.ToString("F2")</span>
+                                                </td>
+                                            </tr>
+                                        }
+                                        <tr class="table-light">
+                                            <td colspan="2" class="fw-bold text-end">TOTAL DO MÊS:</td>
+                                            <td class="text-center fw-bold">
+                                                <span class="badge bg-dark">@monthStats.TotalRecords</span>
+                                            </td>
+                                            <td class="text-center fw-bold text-warning">
+                                                @monthStats.TotalFuel.ToString("F1") L
+                                            </td>
+                                            <td class="text-center fw-bold text-danger">
+                                                R$ @monthStats.TotalCost.ToString("F2")
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Listagem Completa de Todos os Abastecimentos -->
+@if (allFuelRecords.Count > 0)
+{
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-warning text-dark">
+                        <h4 class="mb-0">
+                            <i class="fas fa-list me-2"></i>
+                            Listagem Completa de Abastecimentos
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Veículo</th>
+                                        <th>Tipo Combustível</th>
+                                        <th>Quantidade (L)</th>
+                                        <th>Preço/L (R$)</th>
+                                        <th>Total (R$)</th>
+                                        <th>Quilometragem (km)</th>
+                                        <th>Tanque Cheio</th>
+                                        <th>Observações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var record in allFuelRecords.OrderByDescending(r => r.CreatedAt))
+                                    {
+                                        <tr>
+                                            <td>@record.CreatedAt.ToString("dd/MM/yyyy HH:mm")</td>
+                                            <td>
+                                                <i class="fas fa-car me-2"></i>
+                                                @record.Vehicle?.Name
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">@record.FuelType</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="text-warning fw-bold">@record.FuelAmount.ToString("F1")</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="text-secondary">@record.FuelPricePerUnit.ToString("F2")</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="text-danger fw-bold">R$ @record.TotalCost.ToString("F2")</span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="text-info">@record.Odometer.ToString("F1")</span>
+                                            </td>
+                                            <td class="text-center">
+                                                @if (record.FullTank)
+                                                {
+                                                    <span class="badge bg-success">Sim</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-secondary">Não</span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (!string.IsNullOrEmpty(record.Notes))
+                                                {
+                                                    <small class="text-muted">@record.Notes</small>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<VehicleStatistics> vehicleStatistics = new List<VehicleStatistics>();
+    private List<MonthStatistics> fuelRecordsByMonth = new List<MonthStatistics>();
+    private List<FuelRecord> allFuelRecords = new List<FuelRecord>(); // Adicionado para listagem completa
+    private bool isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarEstatisticas();
+    }
+
+    private async Task CarregarEstatisticas()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            // Carrega dados diretamente dos serviços
+            var fuelRecords = await FuelRecordService.GetAllFuelRecordsAsync();
+            var vehicles = await VehicleService.GetAllVehiclesAsync();
+            
+            Console.WriteLine($"Abastecimentos carregados: {fuelRecords.Count}");
+            Console.WriteLine($"Veículos carregados: {vehicles.Count}");
+            
+            var statistics = new List<VehicleStatistics>();
+            
+            foreach (var vehicle in vehicles.Where(v => !v.IsDeleted))
+            {
+                var vehicleRecords = fuelRecords
+                    .Where(fr => fr.VehicleId == vehicle.Id && !fr.IsDeleted)
+                    .OrderBy(fr => fr.CreatedAt)
+                    .ToList();
+                
+                Console.WriteLine($"Veículo {vehicle.Name}: {vehicleRecords.Count} abastecimentos");
+                
+                if (vehicleRecords.Count == 0) continue;
+                
+                var stats = CalculateVehicleStatistics(vehicle, vehicleRecords);
+                statistics.Add(stats);
+            }
+            
+            // Ordena por consumo médio decrescente (mais eficiente primeiro)
+            vehicleStatistics = statistics.OrderByDescending(s => s.AverageConsumption).ToList();
+            
+            // Calcula estatísticas por mês
+            fuelRecordsByMonth = CalculateMonthlyStatistics(fuelRecords, vehicles);
+            allFuelRecords = fuelRecords.Where(fr => !fr.IsDeleted).OrderByDescending(fr => fr.CreatedAt).ToList(); // Carrega todos os abastecimentos
+            
+            Console.WriteLine($"Estatísticas calculadas: {vehicleStatistics.Count} veículos");
+            Console.WriteLine($"Estatísticas mensais calculadas: {fuelRecordsByMonth.Count} meses");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erro ao carregar estatísticas: {ex.Message}");
+            Console.WriteLine($"StackTrace: {ex.StackTrace}");
+            vehicleStatistics = new List<VehicleStatistics>();
+            fuelRecordsByMonth = new List<MonthStatistics>();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private List<MonthStatistics> CalculateMonthlyStatistics(List<FuelRecord> fuelRecords, List<Vehicle> vehicles)
+    {
+        var monthlyStats = new List<MonthStatistics>();
+        
+        // Agrupa abastecimentos por mês/ano
+        var recordsByMonth = fuelRecords
+            .Where(fr => !fr.IsDeleted)
+            .GroupBy(fr => new { Month = fr.CreatedAt.Month, Year = fr.CreatedAt.Year })
+            .OrderByDescending(g => g.Key.Year)
+            .ThenByDescending(g => g.Key.Month);
+        
+        foreach (var monthGroup in recordsByMonth)
+        {
+            var monthStats = new MonthStatistics
+            {
+                Month = monthGroup.Key.Month,
+                Year = monthGroup.Key.Year,
+                VehicleStats = new List<VehicleMonthStats>()
+            };
+            
+            // Agrupa por veículo dentro do mês
+            var vehicleGroups = monthGroup.GroupBy(fr => fr.VehicleId);
+            
+            foreach (var vehicleGroup in vehicleGroups)
+            {
+                var vehicle = vehicles.FirstOrDefault(v => v.Id == vehicleGroup.Key);
+                if (vehicle == null) continue;
+                
+                var vehicleMonthStats = new VehicleMonthStats
+                {
+                    VehicleName = vehicle.Name,
+                    TotalRecords = vehicleGroup.Count(),
+                    TotalFuel = vehicleGroup.Sum(fr => fr.FuelAmount),
+                    TotalCost = vehicleGroup.Sum(fr => fr.TotalCost)
+                };
+                
+                monthStats.VehicleStats.Add(vehicleMonthStats);
+            }
+            
+            // Calcula totais do mês
+            monthStats.TotalRecords = monthStats.VehicleStats.Sum(v => v.TotalRecords);
+            monthStats.TotalFuel = monthStats.VehicleStats.Sum(v => v.TotalFuel);
+            monthStats.TotalCost = monthStats.VehicleStats.Sum(v => v.TotalCost);
+            
+            monthlyStats.Add(monthStats);
+        }
+        
+        return monthlyStats;
+    }
+
+    private string GetMonthName(int month)
+    {
+        return month switch
+        {
+            1 => "Janeiro",
+            2 => "Fevereiro",
+            3 => "Março",
+            4 => "Abril",
+            5 => "Maio",
+            6 => "Junho",
+            7 => "Julho",
+            8 => "Agosto",
+            9 => "Setembro",
+            10 => "Outubro",
+            11 => "Novembro",
+            12 => "Dezembro",
+            _ => "Mês Desconhecido"
+        };
+    }
+
+    private VehicleStatistics CalculateVehicleStatistics(Vehicle vehicle, List<FuelRecord> records)
+    {
+        var stats = new VehicleStatistics
+        {
+            VehicleId = vehicle.Id,
+            VehicleName = vehicle.Name,
+            VehicleYear = vehicle.Year,
+            TotalFuelRecords = records.Count,
+            TotalFuelConsumed = records.Sum(r => r.FuelAmount),
+            TotalCost = records.Sum(r => r.TotalCost),
+            AverageFuelPrice = records.Average(r => r.FuelPricePerUnit)
+        };
+
+        // Calcula consumo médio entre tanques cheios
+        var fullTankRecords = records.Where(r => r.FullTank).OrderBy(r => r.CreatedAt).ToList();
+        
+        if (fullTankRecords.Count >= 2)
+        {
+            var consumptionPeriods = new List<ConsumptionPeriod>();
+            
+            for (int i = 0; i < fullTankRecords.Count - 1; i++)
+            {
+                var current = fullTankRecords[i];
+                var next = fullTankRecords[i + 1];
+                
+                // Busca todos os registros entre os dois tanques cheios
+                var recordsBetween = records
+                    .Where(r => r.CreatedAt > current.CreatedAt && r.CreatedAt <= next.CreatedAt)
+                    .OrderBy(r => r.CreatedAt)
+                    .ToList();
+                
+                var distance = next.Odometer - current.Odometer;
+                var fuelConsumed = recordsBetween.Sum(r => r.FuelAmount);
+                
+                if (distance > 0 && fuelConsumed > 0)
+                {
+                    consumptionPeriods.Add(new ConsumptionPeriod
+                    {
+                        StartDate = current.CreatedAt,
+                        EndDate = next.CreatedAt,
+                        Distance = distance,
+                        FuelConsumed = fuelConsumed,
+                        Consumption = distance / fuelConsumed
+                    });
+                }
+            }
+            
+            if (consumptionPeriods.Count > 0)
+            {
+                stats.ConsumptionPeriods = consumptionPeriods;
+                stats.AverageConsumption = consumptionPeriods.Average(p => p.Consumption);
+                stats.TotalDistance = consumptionPeriods.Sum(p => p.Distance);
+                stats.TotalFuelBetweenFullTanks = consumptionPeriods.Sum(p => p.FuelConsumed);
+            }
+        }
+        
+        // Se não há períodos entre tanques cheios, calcula baseado em toda a quilometragem
+        if (stats.ConsumptionPeriods.Count == 0 && records.Count > 1)
+        {
+            var minOdometer = records.Min(r => r.Odometer);
+            var maxOdometer = records.Max(r => r.Odometer);
+            var totalDistance = maxOdometer - minOdometer;
+            var totalFuel = records.Sum(r => r.FuelAmount);
+            
+            if (totalDistance > 0 && totalFuel > 0)
+            {
+                stats.AverageConsumption = totalDistance / totalFuel;
+                stats.TotalDistance = totalDistance;
+            }
+        }
+        
+        return stats;
+    }
+
+    public class VehicleStatistics
+    {
+        public int VehicleId { get; set; }
+        public string VehicleName { get; set; } = string.Empty;
+        public int VehicleYear { get; set; }
+        public int TotalFuelRecords { get; set; }
+        public decimal TotalFuelConsumed { get; set; }
+        public decimal TotalCost { get; set; }
+        public decimal AverageFuelPrice { get; set; }
+        public decimal AverageConsumption { get; set; }
+        public decimal TotalDistance { get; set; }
+        public decimal TotalFuelBetweenFullTanks { get; set; }
+        public List<ConsumptionPeriod> ConsumptionPeriods { get; set; } = new List<ConsumptionPeriod>();
+    }
+
+    public class ConsumptionPeriod
+    {
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public decimal Distance { get; set; }
+        public decimal FuelConsumed { get; set; }
+        public decimal Consumption { get; set; }
+    }
+
+    public class MonthStatistics
+    {
+        public int Month { get; set; }
+        public int Year { get; set; }
+        public int TotalRecords { get; set; }
+        public decimal TotalFuel { get; set; }
+        public decimal TotalCost { get; set; }
+        public List<VehicleMonthStats> VehicleStats { get; set; } = new List<VehicleMonthStats>();
+    }
+
+    public class VehicleMonthStats
+    {
+        public string VehicleName { get; set; } = string.Empty;
+        public int TotalRecords { get; set; }
+        public decimal TotalFuel { get; set; }
+        public decimal TotalCost { get; set; }
+    }
+}

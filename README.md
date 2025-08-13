@@ -5,7 +5,7 @@ Sistema desenvolvido em Blazor Server para controle de veículos e abastecimento
 ## 🚀 Deploy no Railway
 
 ### Pré-requisitos
-- Conta no [Railway](https://railway.app)
+- Conta no [Railway](https://fly-io.app)
 - Projeto conectado ao GitHub/GitLab
 - Banco PostgreSQL configurado
 
@@ -14,7 +14,7 @@ Sistema desenvolvido em Blazor Server para controle de veículos e abastecimento
 1. **Fork/Clone este repositório**
 
 2. **Conecte ao Railway**
-   - Acesse [railway.app](https://railway.app)
+   - Acesse [railway.app](https://fly-io.app)
    - Faça login com GitHub/GitLab
    - Clique em "New Project"
    - Selecione "Deploy from GitHub repo"
@@ -87,4 +87,4 @@ dotnet test
 
 Após o deploy, a aplicação estará disponível em:
 
-https://fuel-track-dotnet.fly.dev/
+https://fuel-track-dotnet.fly.dev

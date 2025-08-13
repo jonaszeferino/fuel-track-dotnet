@@ -12,6 +12,7 @@ namespace MeuProjetoBlazorServer.Services
         Task<List<FuelRecord>> GetAllFuelRecordsAsync();
         Task<FuelRecord?> GetFuelRecordByIdAsync(int id);
         Task<List<FuelRecord>> GetFuelRecordsByVehicleAsync(int vehicleId);
+        Task<List<Vehicle>> GetAllVehiclesAsync();
         Task<FuelRecord> CreateFuelRecordAsync(FuelRecord fuelRecord);
         Task<FuelRecord> UpdateFuelRecordAsync(FuelRecord fuelRecord);
         Task<bool> DeleteFuelRecordAsync(int id);
@@ -49,6 +50,14 @@ namespace MeuProjetoBlazorServer.Services
                 .Where(f => f.VehicleId == vehicleId && !f.IsDeleted)
                 .Include(f => f.Vehicle)
                 .OrderByDescending(f => f.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<List<Vehicle>> GetAllVehiclesAsync()
+        {
+            return await _context.Vehicles
+                .Where(v => !v.IsDeleted)
+                .OrderBy(v => v.Name)
                 .ToListAsync();
         }
 
