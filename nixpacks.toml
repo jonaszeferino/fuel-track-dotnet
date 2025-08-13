@@ -1,0 +1,14 @@
+[phases.setup]
+nixPkgs = ["dotnet-sdk_9", "dotnet-runtime_9"]
+
+[phases.install]
+cmds = ["dotnet restore"]
+
+[phases.build]
+cmds = ["dotnet build -c Release"]
+
+[phases.nix-install]
+cmds = ["dotnet publish -c Release -o /app/publish"]
+
+[start]
+cmd = "dotnet MeuProjetoBlazorServer.dll"

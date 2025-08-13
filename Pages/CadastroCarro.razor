@@ -1,0 +1,248 @@
+@page "/cadastro-carro"
+@using MeuProjetoBlazorServer.Data
+@using MeuProjetoBlazorServer.Services
+@inject IVehicleService VehicleService
+@inject NavigationManager Navigation
+
+<PageTitle>Cadastro de Carro</PageTitle>
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        <i class="fas fa-car me-2"></i>
+                        Cadastro de Veículo
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@vehicle" OnValidSubmit="SalvarVeiculo">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="name" class="form-label">Nome do Veículo *</label>
+                                <InputText id="name" class="@GetInputClass(erroName)" 
+                                         @bind-Value="vehicle.Name" />
+                                @if (erroName)
+                                {
+                                    <div class="invalid-feedback">
+                                        Nome é obrigatório
+                                    </div>
+                                }
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="tankCapacity" class="form-label">Capacidade do Tanque (L) *</label>
+                                <InputNumber id="tankCapacity" class="@GetInputClass(erroTankCapacity)" 
+                                           @bind-Value="vehicle.TankCapacity" min="1" step="0.1" />
+                                @if (erroTankCapacity)
+                                {
+                                    <div class="invalid-feedback">
+                                        Capacidade do tanque é obrigatória e deve ser maior que 0
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="year" class="form-label">Ano *</label>
+                                <InputNumber id="year" class="@GetInputClass(erroYear)" 
+                                           @bind-Value="vehicle.Year" min="1900" max="@DateTime.Now.Year" />
+                                @if (erroYear)
+                                {
+                                    <div class="invalid-feedback">
+                                        Ano é obrigatório e deve ser válido
+                                    </div>
+                                }
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="subtitle" class="form-label">Subtítulo/Descrição</label>
+                                <InputText id="subtitle" class="form-control" @bind-Value="vehicle.Subtitle" 
+                                         placeholder="Ex: Carro da família" />
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <button type="button" class="btn btn-secondary" @onclick="LimparFormulario">
+                                <i class="fas fa-eraser me-2"></i>
+                                Limpar
+                            </button>
+                            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                                @if (isLoading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span>Salvando...</span>
+                                }
+                                else
+                                {
+                                    <i class="fas fa-save me-2"></i>
+                                    <span>Salvar Veículo</span>
+                                }
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+
+            @if (vehicles.Count > 0)
+            {
+                <div class="card mt-4">
+                    <div class="card-header bg-success text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-list me-2"></i>
+                            Veículos Cadastrados
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Capacidade do Tanque</th>
+                                        <th>Ano</th>
+                                        <th>Subtítulo</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var v in vehicles)
+                                    {
+                                        <tr>
+                                            <td>@v.Name</td>
+                                            <td>@v.TankCapacity L</td>
+                                            <td>@v.Year</td>
+                                            <td>@v.Subtitle</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-warning me-2" @onclick="() => EditarVeiculo(v)">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-danger" @onclick="() => ExcluirVeiculo(v.Id)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private Vehicle vehicle = new Vehicle { IsDeleted = false };
+    private List<Vehicle> vehicles = new List<Vehicle>();
+    private bool erroName = false;
+    private bool erroTankCapacity = false;
+    private bool erroYear = false;
+    private bool editando = false;
+    private bool isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarVeiculos();
+    }
+
+    private async Task CarregarVeiculos()
+    {
+        try
+        {
+            vehicles = await VehicleService.GetAllVehiclesAsync();
+        }
+        catch (Exception ex)
+        {
+            // Em produção, você pode usar um sistema de notificação
+            Console.WriteLine($"Erro ao carregar veículos: {ex.Message}");
+        }
+    }
+
+    private string GetInputClass(bool hasError)
+    {
+        return hasError ? "form-control is-invalid" : "form-control";
+    }
+
+    private async Task SalvarVeiculo()
+    {
+        // Validação
+        erroName = string.IsNullOrWhiteSpace(vehicle.Name);
+        erroTankCapacity = vehicle.TankCapacity <= 0;
+        erroYear = vehicle.Year <= 0 || vehicle.Year > DateTime.Now.Year;
+
+        if (erroName || erroTankCapacity || erroYear)
+            return;
+
+        isLoading = true;
+
+        try
+        {
+            if (editando)
+            {
+                await VehicleService.UpdateVehicleAsync(vehicle);
+                editando = false;
+            }
+            else
+            {
+                await VehicleService.CreateVehicleAsync(vehicle);
+            }
+
+            await CarregarVeiculos();
+            LimparFormulario();
+        }
+        catch (Exception ex)
+        {
+            // Em produção, você pode usar um sistema de notificação
+            Console.WriteLine($"Erro ao salvar veículo: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void EditarVeiculo(Vehicle vehicleParaEditar)
+    {
+        vehicle = new Vehicle
+        {
+            Id = vehicleParaEditar.Id,
+            Name = vehicleParaEditar.Name,
+            TankCapacity = vehicleParaEditar.TankCapacity,
+            Year = vehicleParaEditar.Year,
+            Subtitle = vehicleParaEditar.Subtitle,
+            IsDeleted = false // Garantir que seja false ao editar
+        };
+        editando = true;
+    }
+
+    private async Task ExcluirVeiculo(int id)
+    {
+        try
+        {
+            await VehicleService.DeleteVehicleAsync(id);
+            await CarregarVeiculos();
+        }
+        catch (Exception ex)
+        {
+            // Em produção, você pode usar um sistema de notificação
+            Console.WriteLine($"Erro ao excluir veículo: {ex.Message}");
+        }
+    }
+
+    private void LimparFormulario()
+    {
+        vehicle = new Vehicle
+        {
+            IsDeleted = false // Garantir que sempre seja false
+        };
+        erroName = false;
+        erroTankCapacity = false;
+        erroYear = false;
+        editando = false;
+    }
+}
